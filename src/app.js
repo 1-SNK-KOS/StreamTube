@@ -28,4 +28,14 @@ app.use(express.static("public"));
 // for doing crud on cookies the configuration is
 app.use(cookieParser());
 
+
+
+// import routes
+import userRouter from './routes/user.routes.js'
+
+// route declaration
+app.use("/api/v1/users",userRouter);
+
+//  https://localhost:8080/api/v1/users/register
+
 export { app };

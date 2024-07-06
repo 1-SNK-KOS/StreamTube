@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { DB_Name } from "./constants.js";
 import connectDB from "./db/index.js";
+import { app } from './app.js'
 
 // dotenve configuration
 import dotenv from 'dotenv';
