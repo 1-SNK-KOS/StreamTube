@@ -1,0 +1,1 @@
+export const mongoDBconnection = 'MONGODB connection failed : '
