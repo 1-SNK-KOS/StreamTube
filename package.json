@@ -1,0 +1,28 @@
+{
+  "name": "playtube",
+  "version": "1.0.0",
+  "description": "It is a backened consent project ",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1-SNK-KOS/playtube.git"
+  },
+  "keywords": [
+    "backened",
+    "playtube",
+    "chai"
+  ],
+  "author": "Gautam Arun Chaurasiya",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/1-SNK-KOS/playtube/issues"
+  },
+  "homepage": "https://github.com/1-SNK-KOS/playtube#readme",
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
