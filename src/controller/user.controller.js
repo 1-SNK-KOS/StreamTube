@@ -1,14 +1,18 @@
-import {asyncHandler} from '../utils/asyncHandler.js;'
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.models.js";
 // import { upload } from '../middlewares/multer.middleware.js';
 import { uploadOnCloudinary } from "../utils/cloudinaryService.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
+import { asyncHandler  } from "../utils/asyncHandler.js";
 
 const RegisterUser = asyncHandler( async (req,res)=> {
     //    res.status(200).json({
     //     message : "okay u got ur goal u r successful person"
     //    })
+
+    // console.log("\n\n\n✨✨✨✨✨✨ THe information about req :: ",req);
+    // console.log("\n\n\n✨✨✨✨✨✨ THe information about req :: ",res);
+
 
        /* Logic that required to have registerUser: 
         1. Get user details from frontened
@@ -24,8 +28,8 @@ const RegisterUser = asyncHandler( async (req,res)=> {
           
         // 1st step
         const {username , fullName , email , password } = req.body;
-
-        console.log(`The details of User \n Email : ${email} \n Username : ${username} \n fullName : ${fullName} \n password : ${password}  `);
+        // console.log("\n\n✨✨✨✨✨✨ THe information about req.body:: ",req.body);
+        // console.log(`The details of User \n Email : ${email} \n Username : ${username} \n fullName : ${fullName} \n password : ${password}  `);
 
         // if(fullName === ""){
         //     throw new ApiError;
@@ -43,19 +47,25 @@ const RegisterUser = asyncHandler( async (req,res)=> {
 
 
         // 3rd Step
-        const existedUser = User.findOne({
+        const existedUser = await User.findOne({
             $or : [{ username },{ email }]
         }
         )
 
         if(existedUser){
-            throw new ApiError(409 , " Username or emails exits")
+            throw new ApiError(409 , " Error :: !!! Username or emails exits while finding in Database")
         }
 
 
         //4th step 
+        // console.log("\n\n✨✨✨✨✨✨ THe information about req.files :: ",req.files);
         const avatarLocalfilePath = req.files?.avatar[0]?.path;
-        const coverImageLocalfilePath = req.files?.coverImage[0]?.path;
+        // const coverImageLocalfilePath = req.files?.coverImage[0]?.path;
+        let  coverImageLocalfilePath;
+
+        if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+            coverImageLocalfilePath = req.files.coverImage[0].path;
+        }
 
         if(!avatarLocalfilePath){
             throw new ApiError(409,"avatar file is required !!");
@@ -64,23 +74,32 @@ const RegisterUser = asyncHandler( async (req,res)=> {
 
         // 5th Step
          const avatar = await uploadOnCloudinary(avatarLocalfilePath);
-         const coverImage = coverImageLocalfilePath === null
+         const coverImage = coverImageLocalfilePath === undefined
                             ?console.log("coverImage is not provided")
                             :await uploadOnCloudinary(coverImageLocalfilePath)
+
+        // console.log("\n\n\n✨✨✨✨✨✨ THe information about avatar after oploading in cloudinary :: ",avatar);
+        
 
         // 6th Step 
        const UserInDB = await User.create({
             fullName,
+            email,
             username : username.toLowerCase(),
             password,
             avatar : avatar.url,
             coverImage : coverImage?.url || ""
         })
+        
+    //    console.log("\n\n\n✨✨✨✨✨✨ THe information about user after created in database :: ",UserInDB);
 
         // to check whether user is created or not // 7th Step
         const UserCreated =  await User.findById(UserInDB._id).select(
             "-password -refreshToken"
         )
+
+
+        // console.log("\n\n\n✨✨✨✨✨✨ THe information about userCreated :: ",UserCreated);
 
         // 8th Step
        

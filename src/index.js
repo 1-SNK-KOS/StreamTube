@@ -6,7 +6,7 @@ import { app } from './app.js'
 // dotenve configuration
 import dotenv from 'dotenv';
 dotenv.config({
-    path : './env'
+    path : './.env' // it doesn't create any error for ./env but the real should be ./and file name (.env)
 })
 
 
