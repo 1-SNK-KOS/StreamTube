@@ -1,10 +1,11 @@
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.models.js";
 // import { upload } from '../middlewares/multer.middleware.js';
-import { uploadOnCloudinary } from "../utils/cloudinaryService.js"
+import { uploadOnCloudinary } from "../utils/cloudinaryUploadService.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler  } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken"
+import { deleteOldFilefromCloudinary } from "../utils/cloudinaryDeleteService.js";
 
 
 
@@ -277,5 +278,142 @@ try {
 }
 })
 
-export { RegisterUser , LogInUser , LogoutUser , refreshAccessToken };
+const changeCurrentPassword = asyncHandler( async (req,res) => {
+
+    const { oldPassword , newPassword } = req.body;
+
+    const userDB = await User.findById(req.user?._id)
+
+    const isPasswordValid = await userDB.isPasswordCorrect(oldPassword)
+
+    if(!isPasswordValid){
+        throw new ApiError(400,"Password is not valid");
+    }
+
+    userDB.password = newPassword;
+    await userDB.save({validateBeforeSave : false})
+
+    return res.status(200)
+              .json(
+                new ApiResponse(200,{},"Password is changed successfully")
+              )
+})
+
+const getCurrentUser = asyncHandler( async (req,res) => {
+    return res.status(200)
+              .json(new ApiResponse(200, req.user , "Current user fetched successfully") )
+})
+
+const updateAccountDetails = asyncHandler( async (req,res) => {
+
+    const { fullName , email } = req.body
+
+    if(!fullName && !email){
+        throw new ApiError(400 , " BBoth fields are required!!!")
+    }
+
+   const updateUser =  await User.findByIdAndUpdate(
+        req.user?._id ,
+     {
+        $set : {
+            email : email,
+            fullName : fullName
+        }
+     },
+     {
+        new : true
+     }
+   ).select("-password -refreshToken")
+
+
+   return res.status(200)
+             .json(  new ApiResponse(200,updateUser,"Account details are updated successfully !!!")  )
+})
+
+const updateUserAvatar = asyncHandler( async(req,res) => {
+  const avatarLocalfilePath = req.file?.path;
+
+  if(!avatarLocalfilePath){
+    throw new ApiError(400,"Avator is not uploaded properly !!!")
+  }
+
+  const avatar = await uploadOnCloudinary(avatarLocalfilePath);
+
+  if(!avatar.url){
+    throw new ApiError(400,"Avator is not uploaded properly !!!") 
+  }
+
+
+
+  const userUpdateDetails = await findByIdAndUpdate(
+    req.user?._id,
+    {
+        $set : {
+            avatar : avatar?.url
+        }
+    },
+    {
+        new : true
+    }
+  ).select("-password")
+
+  
+  if(!userUpdateDetails){
+    throw new ApiError(500,"Error from server side to get the user !!!!")
+  }
+   
+  //BYME : this functionality is added by me
+  const deleteResponse = await deleteOldFilefromCloudinary(req.user?.avatar);
+
+  if(!deleteResponse){
+    throw new ApiError(500,"error is getting response from avatar on cloudinary destroy functionality")
+  }
+
+  return res.status(200)
+            .json(
+                new ApiResponse(200,userUpdateDetails,"Avatar is uploaded successfully!!!")
+            )
+})
+
+const updateUsercoverImage = asyncHandler( async(req,res) => {
+    const coverImageLocalfilePath = req.file?.path;
+  
+    if(!coverImageLocalfilePath){
+      throw new ApiError(400,"CoverImage is not uploaded properly !!!")
+    }
+  
+    const coverImage = await uploadOnCloudinary(coverImageLocalfilePath);
+  
+    if(!coverImage.url){
+      throw new ApiError(400,"CoverImage is not uploaded properly !!!") 
+    }
+     
+    //BYME : this functionality is added by me
+    if(req.user?.coverImage){
+        const deleteResponse = await deleteOldFilefromCloudinary(req.user?.coverImage);
+
+        if(!deleteResponse){
+          throw new ApiError(500,"error is getting response from avatar on cloudinary destroy functionality")
+        }
+    }
+
+    const userUpdateDetails = await findByIdAndUpdate(
+      req.user?._id,
+      {
+          $set : {
+            coverImage : coverImage?.url
+          }
+      },
+      {
+          new : true
+      }
+    ).select("-password")
+  
+    return res.status(200)
+              .json(
+                  new ApiResponse(200,userUpdateDetails,"CoverImage is uploaded successfully!!!")
+              )
+  })
+
+export { RegisterUser , LogInUser , LogoutUser , refreshAccessToken , changeCurrentPassword , getCurrentUser , updateAccountDetails , updateUserAvatar , updateUsercoverImage };
 
