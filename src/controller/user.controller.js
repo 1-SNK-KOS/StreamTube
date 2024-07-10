@@ -413,7 +413,126 @@ const updateUsercoverImage = asyncHandler( async(req,res) => {
               .json(
                   new ApiResponse(200,userUpdateDetails,"CoverImage is uploaded successfully!!!")
               )
-  })
+})
 
-export { RegisterUser , LogInUser , LogoutUser , refreshAccessToken , changeCurrentPassword , getCurrentUser , updateAccountDetails , updateUserAvatar , updateUsercoverImage };
+const getUserChannelProfile = asyncHandler( async(req,res) => {
+    
+    const { username } = body.params;
+
+    if(username?.trim()){
+        throw new ApiError(400,"Username is missing in params")
+    }
+
+    const channel = await User.aggregate([
+            {
+                $match : {
+                    username : username?.toLowerCase()
+                }
+            },{
+                $lookup : {
+                     from : "subscriptions",
+                     localField : "_id",
+                     foreignField: "channel",
+                     as : "Subscriber"
+                }
+            },{
+                $lookup: {
+                    from: "subscriptions",
+                    localField: "_id",
+                    foreignField: "subscribe",
+                    as: "SubscribedTo"
+                  }
+            },{
+                $addFields: {
+                   SubscriberCount : {
+                            $size : "$Subscriber"
+                    },
+                   channelSubscribedToCount : {
+                          $size : "$SubscribedTo"
+                   },
+                   isSubscribe : {
+                       $cond : {
+                            if :{ $in : [req.user?._id , "$Subscriber.subscribe"]},
+                            then : true,
+                            else : false
+                       }
+                   }
+                }
+            },{
+                $project : {
+                    fullName : 1,
+                    email : 1,
+                    avatar : 1,
+                    coverImage : 1,
+                    username : 1,
+                    SubscriberCount : 1,
+                    channelSubscribedToCount : 1,
+                    isSubscribe : 1
+                }
+            }
+
+        ])
+
+        if(channel?.length){
+            throw new ApiError(400,"CHannel does not exists !!!!!")
+        }
+
+        return res.status(200)
+                  .json(
+                    new ApiResponse(200,channel[0],`Welcome to the channel ${channel[0].username}`)
+                  )
+
+})
+
+const userWatchHistory = asyncHandler( async(req,res) => {
+    const user = await User.aggregate([
+        {
+            $match : {
+                _id : new mongoose.Types.ObjectId(req.user?._id)
+            },
+        },
+        {
+            $lookup : {
+                from : "videos",
+                localField : "watchHistory",
+                foreignField : "_id",
+                as : "WatchHistory",
+                pipeline : [
+                    {
+                        $lookup : {
+                            from : "users",
+                            localField : "owner",
+                            foreignField : "_id",
+                            as : "owner",
+                            pipeline : [
+                                {    //TODO : See what happen that if u put this pipeline of project outside of this nested pipline and without it inside and with it inside what's the difference
+                                    $project : {
+                                        username : 1,
+                                        fullName : 1,
+                                        avatar : 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields : {
+                            owner : {
+                                $first : "$owner"
+                            } 
+                        }
+                    }
+                ]       
+             }
+        }
+    ])
+
+    return res.status(200)
+              .json(
+                new ApiResponse(200,user[0].watchHistory, " Watch History details fetched easily 😤")
+              )
+})
+
+
+export { RegisterUser , LogInUser , LogoutUser , refreshAccessToken , changeCurrentPassword , getCurrentUser , updateAccountDetails , updateUserAvatar , updateUsercoverImage , getUserChannelProfile , userWatchHistory };
 
