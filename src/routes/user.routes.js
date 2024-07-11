@@ -25,14 +25,14 @@ router.route("/login").post(LogInUser)
 
 // secure routes
 router.route("/logout").post(verifyJWT , LogoutUser)
-router.route("refresh-token").post(refreshAccessToken)
+router.route("/refresh-token").post(refreshAccessToken)
 router.route("/change-password").post(verifyJWT , changeCurrentPassword )
 router.route("/current-user").get(verifyJWT , getCurrentUser )
 router.route("/update-account").patch(verifyJWT , updateAccountDetails )
 router.route("/avatar").patch(verifyJWT , upload.single("avatar") , updateUserAvatar )
 router.route("/coverImage").patch(verifyJWT , upload.single("coverImage") , updateUsercoverImage )
 router.route("/c/:username").get(verifyJWT , getUserChannelProfile ) 
-//NOTE : the syntax for getting through url is in route "/<anyName>/:<same name as in destructing >"
+//NOTE : the syntax for getting through url is in route "/<anyName>/:<same name as in destructing >" but when u send request from postman or url is http ://localhost : 8080/api/v1/users/c/<username>
 router.route("/watchHistory").get(verifyJWT , userWatchHistory )
 
 

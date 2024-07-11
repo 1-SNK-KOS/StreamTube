@@ -6,24 +6,25 @@ import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler  } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken"
 import { deleteOldFilefromCloudinary } from "../utils/cloudinaryDeleteService.js";
+import mongoose from "mongoose";
 
 
 
 // Method for Generating A&R TOken
 const generateAccessRefreshToken = async (userId) => {
     try {
-
+        // console.log("6th Step\n");
         const userDetails = await User.findById(userId);
         const AccessToken = userDetails.generateAccessToken();
-        const RefreshToken = userDetails.generateRefreshToken();
+        const RefreshToken = await userDetails.generateRefreshToken();
        
-        // console.log("Helllo Hi ",AccessToken , RefreshToken);
+        // console.log("Helllo Hi ",AccessToken ,"\n\n", RefreshToken);
 
 
 
         userDetails.refreshToken = RefreshToken;
         await userDetails.save({validateBeforeSave : false})
-
+        // console.log("5th Step\n",RefreshToken);
         return { AccessToken , RefreshToken };
 
     } catch (error) {
@@ -203,11 +204,12 @@ const LogInUser = asyncHandler( async (req,res) => {
               .cookie("accessToken" , AccessToken , options)
               .cookie("refreshToken" , RefreshToken , options)
               .json(
-                200,
+                new ApiResponse( 200,
                 {
                     user : LoggedInUser , AccessToken , RefreshToken
                 },
                 "User is logged in successfully"
+               )
               )
  
 })
@@ -219,7 +221,10 @@ const LogoutUser = asyncHandler( async(req,res) => {
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set : {refreshToken : undefined}
+            // $set : {refreshToken : null}
+            $unset : {
+                refreshToken : 1 // this removes the field from doc
+            }
         },
         {
             new : true
@@ -242,36 +247,46 @@ const LogoutUser = asyncHandler( async(req,res) => {
 
 const refreshAccessToken = asyncHandler( async (req,res) => {
     const cookieRefreshToken = req.cookies?.refreshToken ||   req.body.refreshToken;
-
+     
+    // console.log(cookieRefreshToken,"\n\n")
     if(!cookieRefreshToken){
         throw new ApiError(401,"Unauthorized request");
     }
 try {
     
         const decodedToken = jwt.verify(cookieRefreshToken,process.env.REFRESH_TOKEN_SECRET)
-    
+     
+        // console.log("2nd Step\n");
         const userDB = await User.findById(decodedToken?._id)
-    
+        
         if(!userDB){
             throw new ApiError(401 , "Invalid Refresh Token");
         }
-    
+        
+         console.log(userDB) 
         if(cookieRefreshToken !== userDB.refreshToken){
             throw new ApiError(401,"Refresh Token is either expired or used");
         }
+       
+        // console.log("3rd Step\n");
     
-        const { AccessToken , newRefreshToken } = generateAccessRefreshToken(userDB._id);
-    
+        const { AccessToken , RefreshToken } = await generateAccessRefreshToken(userDB._id);
+    //NOTE : While destructing never change the name with what u have return both shld be the same
+        // console.log("4th Step\n",RefreshToken);
         const options = {
             httpOnly : true,
             secure : true
         }
-    
+        // console.log("7th Step \n");
         return res.status(200)
                   .cookie("accessToken" , AccessToken , options)
                   .cookie("refreshToken" , RefreshToken , options)
                   .json(
-                       new ApiResponse(200,{AccessToken,refreshToken : newRefreshToken},"Access Token is Refresh")
+                       new ApiResponse(200,
+                        { AccessToken,
+                        RefreshToken : RefreshToken
+                        },
+                    "Access Token is Refresh")
                     )
 } catch (error) {
     new ApiError(401,error?.message || "Invalid Refresh TOken")
@@ -417,9 +432,9 @@ const updateUsercoverImage = asyncHandler( async(req,res) => {
 
 const getUserChannelProfile = asyncHandler( async(req,res) => {
     
-    const { username } = body.params;
+    const { username } = req.params;
 
-    if(username?.trim()){
+    if(!username?.trim()){
         throw new ApiError(400,"Username is missing in params")
     }
 
@@ -473,7 +488,7 @@ const getUserChannelProfile = asyncHandler( async(req,res) => {
 
         ])
 
-        if(channel?.length){
+        if(!channel?.length){
             throw new ApiError(400,"CHannel does not exists !!!!!")
         }
 
